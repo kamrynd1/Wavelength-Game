@@ -1,0 +1,397 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Wavelength — On Drugs Edition</title>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: system-ui, sans-serif; background: #f5f5f0; color: #1a1a18; min-height: 100vh; display: flex; align-items: flex-start; justify-content: center; padding: 2rem 1rem; }
+
+  .game-wrap { width: 100%; max-width: 620px; }
+
+  .screen { display: none; }
+  .screen.active { display: block; }
+
+  h2 { font-size: 20px; font-weight: 500; color: #1a1a18; margin-bottom: 6px; }
+  .sub { font-size: 14px; color: #5f5e5a; line-height: 1.6; }
+
+  .spectrum-card {
+    background: #fff;
+    border: 0.5px solid rgba(0,0,0,0.12);
+    border-radius: 12px;
+    padding: 1.5rem 1.25rem;
+    margin: 1.25rem 0;
+  }
+
+  .spectrum-labels {
+    display: flex;
+    justify-content: space-between;
+    font-size: 13px;
+    font-weight: 500;
+    color: #5f5e5a;
+    margin-bottom: 10px;
+  }
+
+  .spectrum-bar {
+    position: relative;
+    height: 40px;
+    border-radius: 20px;
+    background: linear-gradient(to right, #3B8BD4, #888780, #D85A30);
+    cursor: pointer;
+    user-select: none;
+  }
+
+  .target-zone {
+    position: absolute;
+    top: 0; bottom: 0;
+    border-radius: 20px;
+    background: rgba(255,255,255,0.25);
+    border: 2px solid rgba(255,255,255,0.6);
+    transition: opacity 0.4s;
+    pointer-events: none;
+  }
+
+  .guess-marker {
+    position: absolute;
+    top: -6px; bottom: -6px;
+    width: 14px;
+    background: #1a1a18;
+    border-radius: 7px;
+    transform: translateX(-7px);
+    cursor: grab;
+    display: none;
+  }
+
+  .clue-box {
+    background: #f1efe8;
+    border-radius: 8px;
+    padding: 0.75rem 1rem;
+    margin: 1rem 0;
+    font-size: 15px;
+    font-weight: 500;
+    color: #1a1a18;
+    text-align: center;
+    min-height: 44px;
+    display: flex; align-items: center; justify-content: center;
+  }
+
+  .score-zone {
+    display: none;
+    margin-top: 10px;
+    padding: 0.75rem 1rem;
+    border-radius: 8px;
+    font-size: 14px;
+    font-weight: 500;
+    text-align: center;
+  }
+  .score-zone.show { display: block; }
+  .score-zone.good { background: #eaf3de; color: #3b6d11; }
+  .score-zone.ok   { background: #faeeda; color: #854f0b; }
+  .score-zone.miss { background: #fcebeb; color: #a32d2d; }
+
+  .btn-row { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 1rem; }
+  button {
+    font-size: 14px; padding: 9px 20px;
+    border-radius: 8px; cursor: pointer;
+    border: 0.5px solid rgba(0,0,0,0.2);
+    background: transparent; color: #1a1a18;
+    transition: background 0.15s;
+    font-family: inherit;
+  }
+  button:hover { background: #f1efe8; }
+  button.primary { background: #1a1a18; color: #fff; border-color: transparent; }
+  button.primary:hover { opacity: 0.85; }
+
+  .round-info { font-size: 13px; color: #5f5e5a; margin-bottom: 1rem; }
+
+  .spec-list { margin: 1rem 0; }
+  .spec-item {
+    display: flex; gap: 8px; align-items: center;
+    font-size: 13px; color: #5f5e5a;
+    padding: 7px 0;
+    border-bottom: 0.5px solid rgba(0,0,0,0.08);
+  }
+  .spec-item:last-child { border-bottom: none; }
+  .spec-dot { width: 7px; height: 7px; border-radius: 50%; background: #888780; flex-shrink: 0; }
+
+  .score-board { display: flex; gap: 12px; justify-content: center; margin: 1.25rem 0; }
+  .score-card {
+    flex: 1; max-width: 130px;
+    background: #f1efe8;
+    border-radius: 8px;
+    padding: 1rem;
+    text-align: center;
+  }
+  .score-num { font-size: 32px; font-weight: 500; color: #1a1a18; }
+  .score-lbl { font-size: 12px; color: #5f5e5a; margin-top: 3px; }
+
+  .debrief-box {
+    background: #f1efe8;
+    border-left: 3px solid #3B8BD4;
+    border-radius: 0 8px 8px 0;
+    padding: 0.85rem 1rem;
+    font-size: 13px;
+    color: #5f5e5a;
+    line-height: 1.65;
+    margin-top: 1.25rem;
+  }
+
+  input[type="text"] {
+    width: 100%; font-size: 15px;
+    padding: 10px 12px;
+    border-radius: 8px;
+    border: 0.5px solid rgba(0,0,0,0.2);
+    background: #fff; color: #1a1a18;
+    font-family: inherit;
+    margin-top: 4px;
+  }
+  input[type="text"]:focus { outline: none; border-color: rgba(0,0,0,0.4); }
+
+  @media (prefers-color-scheme: dark) {
+    body { background: #1c1c1a; color: #d4d2c8; }
+    h2 { color: #d4d2c8; }
+    .sub, .round-info, .spec-item, .score-lbl, .debrief-box { color: #888780; }
+    .spectrum-card { background: #2c2c2a; border-color: rgba(255,255,255,0.1); }
+    .clue-box, .score-card { background: #2c2c2a; }
+    .clue-box { color: #d4d2c8; }
+    .score-num { color: #d4d2c8; }
+    .debrief-box { background: #2c2c2a; }
+    .spec-item { border-color: rgba(255,255,255,0.08); }
+    .guess-marker { background: #d4d2c8; }
+    button { border-color: rgba(255,255,255,0.2); color: #d4d2c8; }
+    button:hover { background: #2c2c2a; }
+    button.primary { background: #d4d2c8; color: #1c1c1a; }
+    input[type="text"] { background: #2c2c2a; color: #d4d2c8; border-color: rgba(255,255,255,0.2); }
+  }
+</style>
+</head>
+<body>
+<div class="game-wrap">
+
+  <!-- INTRO -->
+  <div class="screen active" id="screen-intro">
+    <h2>Wavelength</h2>
+    <p class="sub" style="margin-bottom:0.75rem;">A hidden target sits on a spectrum. One player gives a one-word clue — everyone else guesses where on the spectrum it lands.</p>
+    <p class="sub">This version uses spectra themed around <em>On Drugs</em> by Justin Smith-Ruiu — perfect for a neuro class opener.</p>
+    <div class="spec-list">
+      <div class="spec-item"><div class="spec-dot"></div>Objective ←→ Subjective</div>
+      <div class="spec-item"><div class="spec-dot"></div>Real ←→ Imagined</div>
+      <div class="spec-item"><div class="spec-dot"></div>Drug ←→ Medicine</div>
+      <div class="spec-item"><div class="spec-dot"></div>Reliable ←→ Unreliable evidence</div>
+      <div class="spec-item"><div class="spec-dot"></div>Mind ←→ Brain</div>
+      <div class="spec-item"><div class="spec-dot"></div>Sober ←→ Altered</div>
+    </div>
+    <div class="btn-row"><button class="primary" onclick="startGame()">Start game</button></div>
+  </div>
+
+  <!-- CLUE GIVER -->
+  <div class="screen" id="screen-clue">
+    <p class="round-info" id="round-label">Round 1 of 3</p>
+    <h2 id="spectrum-title"></h2>
+    <p class="sub" style="margin:4px 0 0;">Only the clue giver sees the target. Give a one-word clue pointing to where on the spectrum the target sits.</p>
+    <div class="spectrum-card">
+      <div class="spectrum-labels"><span id="left-label"></span><span id="right-label"></span></div>
+      <div class="spectrum-bar" id="bar-clue">
+        <div class="target-zone" id="target-zone"></div>
+      </div>
+    </div>
+    <p class="sub">Your clue word:</p>
+    <input id="clue-input" type="text" placeholder="e.g. microscope...">
+    <div class="btn-row"><button class="primary" onclick="showGuessScreen()">Give clue to team</button></div>
+  </div>
+
+  <!-- GUESSING -->
+  <div class="screen" id="screen-guess">
+    <p class="round-info" id="round-label-2">Round 1 of 3</p>
+    <h2 id="spectrum-title-2"></h2>
+    <p class="sub" style="margin:4px 0 0;">Click or drag the marker to where you think the target is.</p>
+    <div class="spectrum-card">
+      <div class="spectrum-labels"><span id="left-label-2"></span><span id="right-label-2"></span></div>
+      <div class="spectrum-bar" id="bar-guess">
+        <div class="guess-marker" id="guess-marker"></div>
+      </div>
+    </div>
+    <div class="clue-box" id="clue-display">—</div>
+    <div class="score-zone" id="score-zone"></div>
+    <div class="btn-row" id="btn-guess-row">
+      <button class="primary" onclick="revealScore()">Reveal target</button>
+    </div>
+    <div class="btn-row" id="btn-next-row" style="display:none;">
+      <button class="primary" onclick="nextRound()">Next round</button>
+      <button onclick="endGame()">End game</button>
+    </div>
+  </div>
+
+  <!-- RESULTS -->
+  <div class="screen" id="screen-results">
+    <h2>Game over</h2>
+    <div class="score-board">
+      <div class="score-card"><div class="score-num" id="final-score">0</div><div class="score-lbl">total points</div></div>
+      <div class="score-card"><div class="score-num" id="rounds-played">0</div><div class="score-lbl">rounds played</div></div>
+    </div>
+    <div class="debrief-box">
+      Notice how hard it was to land everyone exactly where you were thinking? Smith-Ruiu argues that's the fundamental problem with first-person data — and also why we can't just throw it out. Language is always an imperfect bridge between your inner experience and someone else's understanding.
+    </div>
+    <div class="btn-row" style="margin-top:1.25rem;">
+      <button class="primary" onclick="restartGame()">Play again</button>
+    </div>
+  </div>
+
+</div>
+<script>
+const SPECTRA = [
+  { title: "Objective ←→ Subjective", left: "Objective", right: "Subjective" },
+  { title: "Real ←→ Imagined", left: "Real", right: "Imagined" },
+  { title: "Drug ←→ Medicine", left: "Drug", right: "Medicine" },
+  { title: "Reliable ←→ Unreliable evidence", left: "Reliable evidence", right: "Unreliable evidence" },
+  { title: "Mind ←→ Brain", left: "Mind", right: "Brain" },
+  { title: "Sober ←→ Altered", left: "Sober", right: "Altered" },
+];
+
+let round = 0, totalScore = 0, roundsPlayed = 0, targetPct = 50, guessPct = 50, guessPlaced = false;
+const MAX_ROUNDS = 3;
+let shuffled = [];
+
+function shuffle(arr) {
+  const a = [...arr];
+  for (let i = a.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [a[i], a[j]] = [a[j], a[i]];
+  }
+  return a;
+}
+
+function show(id) {
+  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+}
+
+function startGame() {
+  round = 0; totalScore = 0; roundsPlayed = 0;
+  shuffled = shuffle(SPECTRA);
+  loadRound();
+}
+
+function loadRound() {
+  const spec = shuffled[round % shuffled.length];
+  targetPct = 15 + Math.floor(Math.random() * 70);
+  guessPlaced = false;
+
+  document.getElementById('round-label').textContent = `Round ${round + 1} of ${MAX_ROUNDS}`;
+  document.getElementById('round-label-2').textContent = `Round ${round + 1} of ${MAX_ROUNDS}`;
+  document.getElementById('spectrum-title').textContent = spec.title;
+  document.getElementById('spectrum-title-2').textContent = spec.title;
+  document.getElementById('left-label').textContent = spec.left;
+  document.getElementById('right-label').textContent = spec.right;
+  document.getElementById('left-label-2').textContent = spec.left;
+  document.getElementById('right-label-2').textContent = spec.right;
+  document.getElementById('clue-input').value = '';
+
+  const tz = document.getElementById('target-zone');
+  tz.style.left = Math.max(0, targetPct - 7) + '%';
+  tz.style.width = '14%';
+  tz.style.opacity = '1';
+
+  const gm = document.getElementById('guess-marker');
+  gm.style.left = '50%';
+  gm.style.display = 'none';
+  guessPct = 50;
+
+  document.getElementById('clue-display').textContent = '—';
+  document.getElementById('score-zone').classList.remove('show');
+  document.getElementById('score-zone').className = 'score-zone';
+  document.getElementById('btn-guess-row').style.display = 'flex';
+  document.getElementById('btn-next-row').style.display = 'none';
+
+  show('screen-clue');
+}
+
+function showGuessScreen() {
+  const clue = document.getElementById('clue-input').value.trim();
+  if (!clue) { alert('Enter a clue word first!'); return; }
+  document.getElementById('clue-display').textContent = '"' + clue + '"';
+  const gm = document.getElementById('guess-marker');
+  gm.style.left = '50%';
+  gm.style.display = 'block';
+  setupDrag();
+  show('screen-guess');
+}
+
+function setupDrag() {
+  const bar = document.getElementById('bar-guess');
+  const marker = document.getElementById('guess-marker');
+  let dragging = false;
+
+  function getPct(e) {
+    const rect = bar.getBoundingClientRect();
+    const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+    return Math.max(0, Math.min(100, ((clientX - rect.left) / rect.width) * 100));
+  }
+  function onMove(e) {
+    if (!dragging) return;
+    e.preventDefault();
+    guessPct = getPct(e);
+    guessPlaced = true;
+    marker.style.left = guessPct + '%';
+  }
+  marker.onmousedown = (e) => { dragging = true; e.preventDefault(); };
+  bar.onclick = (e) => {
+    guessPct = getPct(e);
+    guessPlaced = true;
+    marker.style.left = guessPct + '%';
+    marker.style.display = 'block';
+  };
+  document.onmousemove = onMove;
+  document.onmouseup = () => { dragging = false; };
+  marker.ontouchstart = () => { dragging = true; };
+  document.ontouchmove = onMove;
+  document.ontouchend = () => { dragging = false; };
+}
+
+function revealScore() {
+  if (!guessPlaced) guessPct = parseFloat(document.getElementById('guess-marker').style.left) || 50;
+  const diff = Math.abs(guessPct - targetPct);
+  let points = 0, msg = '', cls = '';
+  if (diff <= 4)       { points = 4; msg = '4 points — Bullseye!'; cls = 'good'; }
+  else if (diff <= 9)  { points = 3; msg = '3 points — Very close!'; cls = 'good'; }
+  else if (diff <= 16) { points = 2; msg = '2 points — Close!'; cls = 'ok'; }
+  else if (diff <= 25) { points = 1; msg = '1 point — Almost!'; cls = 'ok'; }
+  else                 { points = 0; msg = '0 points — Far off'; cls = 'miss'; }
+
+  totalScore += points;
+  roundsPlayed++;
+
+  const sz = document.getElementById('score-zone');
+  sz.textContent = msg + `  (Target: ${Math.round(targetPct)}%  •  Your guess: ${Math.round(guessPct)}%)`;
+  sz.className = 'score-zone show ' + cls;
+
+  const bar = document.getElementById('bar-guess');
+  const revealZone = document.createElement('div');
+  revealZone.className = 'target-zone';
+  revealZone.style.left = Math.max(0, targetPct - 7) + '%';
+  revealZone.style.width = '14%';
+  revealZone.style.background = 'rgba(255,255,255,0.4)';
+  bar.appendChild(revealZone);
+
+  document.getElementById('btn-guess-row').style.display = 'none';
+  document.getElementById('btn-next-row').style.display = 'flex';
+}
+
+function nextRound() {
+  document.querySelectorAll('#bar-guess .target-zone').forEach((z, i) => { if (i > 0) z.remove(); });
+  round++;
+  if (round >= MAX_ROUNDS) endGame();
+  else loadRound();
+}
+
+function endGame() {
+  document.getElementById('final-score').textContent = totalScore;
+  document.getElementById('rounds-played').textContent = roundsPlayed;
+  show('screen-results');
+}
+
+function restartGame() { startGame(); }
+</script>
+</body>
+</html>
